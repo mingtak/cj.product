@@ -31,6 +31,7 @@ setup(name='cj.product',
           'plone.namedfile [blobs]',
           # -*- Extra requirements: -*-
           'afiliate.product',
+          'beautifulsoup4',
       ],
       entry_points="""
       # -*- Entry points: -*-

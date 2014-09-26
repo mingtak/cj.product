@@ -1,0 +1,3 @@
+<registry>
+  <records interface="cj.product.cjconfiglet.ICjConfiglet" />
+</registry>

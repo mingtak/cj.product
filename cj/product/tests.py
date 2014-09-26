@@ -52,6 +52,14 @@ def test_suite():
 
         # -*- extra stuff goes here -*-
 
+        # Integration tests for CjConfiglet
+        ztc.ZopeDocFileSuite(
+            'CjConfiglet.txt',
+            package='cj.product',
+            optionflags = OPTION_FLAGS,
+            test_class=TestCase),
+
+
         # Integration tests for CjProduct
         ztc.ZopeDocFileSuite(
             'CjProduct.txt',

@@ -23,10 +23,6 @@ class ICjProduct(form.Schema, IImageScaleTraversable, IProductData):
     """
     Product content type for cj.com
     """
-    newField = schema.TextLine(
-        title=_(u"new field"),
-        required=True,
-    )
 
 class CjProduct(Container):
     grok.implements(ICjProduct)

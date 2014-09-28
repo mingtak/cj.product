@@ -32,7 +32,7 @@ class PorductImport(BrowserView):
         connectId = registry.get("%s.%s" % (self.prefixString, "cjDataFeedConnectId"))
         connectPassword = registry.get("%s.%s" % (self.prefixString, "cjDataFeedConnectPassword"))
         dataFeedSetting = registry.get("%s.%s" % (self.prefixString, "cjDataFeedSetting"))
-#        for record in dataFeedSetting.split():
+
         # get one record for each operator
         record = dataFeedSetting.split()[int(request["record"])]
         advertiser, urlString = record.split(self.splitString)
@@ -40,6 +40,7 @@ class PorductImport(BrowserView):
         gzFileName = urlString.split("/")[-1]
         dataFileName = gzFileName.split(".gz")[0]
         wgetString = "http://%s:%s@%s" % (connectId, connectPassword, urlString)
+
         # wget, write to /tmp , read, del temp file, useing try-except.
         try:
             system("wget %s -O %s/%s" % (wgetString, self.tmpDir, gzFileName))
@@ -57,17 +58,20 @@ class PorductImport(BrowserView):
         # in this loop, every product have same advertiser
         count = 0
         for product in soup.find_all("product"):
-#                try:
-#可以利用 if 判斷，配合星期，每7筆更新一次，達到每周只更新一次
-                #Import 1000 record at one time， to avoid out of memory
-            count += 1
-            if count > 10:
-                return
             title = getattr(product.find("name"), "string", None)
             sku = getattr(product.find("sku"), "string", None)
-            productName = getattr(product.find("name"), "string", None)
-            if title is None or sku is None or productName is None:
+            if title is None or sku is None:
                 continue
+            recordCount = len(catalog({"portal_type":"cj.product.cjproduct",
+                                       "programName":safe_unicode(str(getattr(product.find("programname"), "string", advertiser))),
+                                       "title":title,
+                                       "sku":sku}))
+            if recordCount > 0:
+                continue
+            #Import 1000 record at one time， to avoid out of memory
+            count += 1
+            if count > 5:
+                return
             try:
                 year, month, day = str(getattr(product.find("lastupdated"), "string", "")).split()[0].split("-")[0:3]
                 hour, minute = str(getattr(product.find("lastupdated"), "string", "")).split()[1].split(":")[0:2]
@@ -111,7 +115,7 @@ class PorductImport(BrowserView):
             except:
                 continue
             #目前尚未處理startDate, endDate (對應catalog index的 start, end),原因：找不到sample
-            #以及，advertiser的反應關連尚未確認正確性，如不正確，要使用notify處理(見getnewrelation...)！
+            #以及，advertiser的反向關連尚未確認正確性，如不正確，要使用notify處理(見getnewrelation...)！
             #還有，新增處理了，但更新沒處理到！
             logger.info(":: %s: %s" %
                 (product.find("name").string,

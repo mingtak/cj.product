@@ -34,9 +34,9 @@ class PorductImport(BrowserView):
         dataFeedSetting = registry.get("%s.%s" % (self.prefixString, "cjDataFeedSetting"))
 
         # get one record for each operator
-        record = dataFeedSetting.split()[int(request["record"])]
+        record = dataFeedSetting.split("\r\n")[int(request["record"])]
         advertiser, urlString = record.split(self.splitString)
-        advertiserObject = catalog({"portal_type":"mingtak.advertiser.advertiser", "id":advertiser})[0].getObject()
+        advertiserObject = catalog({"portal_type":"mingtak.advertiser.advertiser", "title":advertiser})[0].getObject()
         gzFileName = urlString.split("/")[-1]
         dataFileName = gzFileName.split(".gz")[0]
         wgetString = "http://%s:%s@%s" % (connectId, connectPassword, urlString)
@@ -70,7 +70,7 @@ class PorductImport(BrowserView):
                 continue
             #Import 1000 record at one time， to avoid out of memory
             count += 1
-            if count > 5:
+            if count > 100:
                 return
             try:
                 year, month, day = str(getattr(product.find("lastupdated"), "string", "")).split()[0].split("-")[0:3]

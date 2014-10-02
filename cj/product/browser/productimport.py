@@ -9,6 +9,10 @@ from Products.CMFPlone.utils import safe_unicode
 from os import popen, system
 from bs4 import BeautifulSoup
 from datetime import datetime
+from naiveBayesClassifier import tokenizer
+from naiveBayesClassifier.trainer import Trainer
+from naiveBayesClassifier.classifier import Classifier
+from ..config import TRAINING_SET as trainingSet
 #以下4個import，做關聯用
 from zope.app.intid.interfaces import IIntIds
 from z3c.relationfield import RelationValue
@@ -18,10 +22,16 @@ from zope.lifecycleevent import ObjectModifiedEvent
 
 logger = logging.getLogger("cj.product.productimport")
 
+
 class PorductImport(BrowserView):
     prefixString = "cj.product.cjconfiglet.ICjConfiglet"
     splitString = ":::"
     tmpDir = "/tmp"
+
+    trainer = Trainer(tokenizer)
+    for record in trainingSet:
+        trainer.train(record['text'], record['category'])
+    classifier = Classifier(trainer.data, tokenizer)
 
     def __call__(self):
         request = self.request
@@ -75,9 +85,23 @@ class PorductImport(BrowserView):
             try:
                 year, month, day = str(getattr(product.find("lastupdated"), "string", "")).split()[0].split("-")[0:3]
                 hour, minute = str(getattr(product.find("lastupdated"), "string", "")).split()[1].split(":")[0:2]
+
+
+                descriptionString = safe_unicode(str(getattr(product.find("description"), "string", "")))
+                productClassification = self.classifier.classify(descriptionString)
+                subjectList = []
+                for subject in productClassification:
+                    if subject[1] > 10000:
+                        subjectList.append(subject[0])
+                if subjectList == []:
+                    subjectList = ["Other"]
+                logger.info(productClassification)
+                # try more the
+
                 api.content.create(container=portal['product'],
                                    type='cj.product.cjproduct',
                                    title=safe_unicode(str(title)),
+                                   subject=subjectList,
                                    advertiser=[RelationValue(intIds.getId(advertiserObject))],
                                    programName=safe_unicode(str(getattr(product.find("programname"), "string", advertiser))),
                                    programUrl=safe_unicode(str(getattr(product.find("programurl"), "string", ""))),

@@ -14,13 +14,143 @@
 
 <metal:main fill-slot="content-core">
   <metal:content-core define-macro="content-core">
-    <h2>
-        Rendered from
-        cjproduct_templates/<span tal:replace="template/id" />
-    </h2>
 
 
-    <div tal:content="context/Title">Title inserted here</div>
+
+
+            	<div class="span8" id="cjproduct-item">
+                
+                	<div class="blog-post">
+                    
+                    	<div class="blog-post-title">
+                                	
+							<h2 tal:content="context/Title">Our First Blog Post</h2>
+							
+							<p>
+								<i class="ifc-date_to"></i> 
+<tal:lastupdated replace="python:context.lastUpdated.strftime('%b %d, %Y')" /> | 
+								<i class="ifc-ball_point_pen"></i> 
+								Advertiser:  
+<a tal:attributes="href python:context.advertiser[0].to_object.absolute_url()"
+   tal:content="python:context.advertiser[0].to_object.title" /> | 
+								<i class="ifc-quote"></i>
+In Stock: <tal:instock replace="context/inStock" />
+							</p>
+							
+						</div><!-- end .blog-post-title -->
+                        
+                        <div class="blog-post-thumb">
+
+
+
+                    <div class="portfolio-item-2">
+                    	
+                        <div class="row">
+                        	<div class="span3">
+                                <div class="portfolio-item-preview">
+                                	<img class="responsive-img"
+                                             tal:attributes="src context/imageUrl;
+                                                             alt context/Title">
+                                    <div class="portfolio-item-overlay">
+                                        <div class="portfolio-item-overlay-actions">
+                                            <a class="magnificPopup-gallery portfolio-item-zoom"
+                                               tal:attributes="href context/imageUrl">
+                                                <i class="ifc-zoom_in"></i>
+                                            </a>
+                                        </div><!-- end .portfolio-item-overlay-actions -->
+                                    </div><!-- end .portfolio-item-overlay -->
+                                </div><!-- end .portfolio-item-preview -->
+                            </div><!-- end .span3 -->
+
+
+<tal:advertiser define="advertiser python:context.advertiser[0].to_object">
+                  <div class="span5">
+<div tal:replace="structure provider:IAddThis" />
+                    <div class="tabs-container">
+                    
+                        <ul class="tabs-menu fixed">
+                            <li>
+                                <a href="#product-tab">Product</a>
+                            </li>
+                            <li>
+                                <a href="#advertiser-tab">Advertiser</a>
+                            </li>
+                        </ul><!-- end .tabs-menu -->
+                        
+                        <div class="tabs">
+                            
+                            <div class="tab-content" id="product-tab">
+
+<ul class="arrow">
+<li>Brand: <span tal:replace="context/manufacturer" /></li>
+<li>SKU: <span tal:replace="context/sku" /></li>
+<li tal:condition="python:context.salePrice < context.price and context.salePrice > 0.0">
+  <del tal:content="string:Price: ${context/currency} ${context/price}"/></li>
+<li tal:condition="python:context.salePrice == context.price or context.salePrice == 0.0"
+    tal:content="string:Price: ${context/currency} ${context/price}"></li>
+<li tal:condition="python:context.salePrice < context.price and context.salePrice > 0.0">
+    <strong tal:content="string:Sale Price: ${context/currency} ${context/salePrice}" style="color:red" /></li>
+<li>Payment method:
+    <tal:repeat repeat="payment advertiser/allowedPayment">
+        <img tal:replace="structure payment/to_object/@@images/logoImage/listing" />
+    </tal:repeat>
+</li>
+<li>Registry method:
+    <tal:repeat repeat="payment advertiser/loginMethod">
+        <img tal:replace="structure payment/to_object/@@images/leadImage/listing" />
+    </tal:repeat>
+</li>
+
+</ul>
+<strong tal:content="context/promotionalText"
+        tal:condition="python:context.promotionalText != '' and context.promotionalText != context.Description"/>
+<p class="text-right hidden-tablet">
+  <a class="btn alt" tal:attributes="href context/buyUrl" target="_blank">Buy Now<i class="ifc-fast_forward"></i></a>
+</p>
+</div><!-- end .tab-content -->
+
+                            
+<div class="tab-content" id="advertiser-tab">
+  <p tal:content="python:advertiser.Description()"/>
+  <ul class="check">
+    <li>Security:
+      <tal:repeat repeat="payment advertiser/securityMethod">
+        <img tal:replace="structure payment/to_object/@@images/leadImage/listing" />
+      </tal:repeat>   
+    </li>
+    <li>Social:
+      <tal:repeat repeat="payment advertiser/socialNetwork">
+        <img tal:replace="structure payment/to_object/@@images/logoImage/listing" />
+      </tal:repeat>
+    </li>
+  </ul>
+</div><!-- end .tab-content -->
+                            
+						</div><!-- end .tabs -->  
+                    
+                    </div><!-- end .tabs-container -->                    
+                  </div><!-- end .span5 -->
+</tal:advertiser>
+
+
+
+                        </div><!-- end .row -->
+                    </div><!-- end .portfolio-item-2 -->
+                        </div><!-- end .blog-post-thumb -->
+<div class="firstletter" tal:content="structure context/Description" />
+<img tal:attributes="src context/impressionUrl" />
+                    </div><!-- end .blog-post -->
+
+<div tal:replace="structure provider:IMaybeYouLike" />
+<div tal:replace="structure provider:IDisqus" />
+<div tal:replace="structure provider:IGoogleAdResponsive" />
+                </div><!-- end .span8 -->
+
+
+
+
+
+
 
   </metal:content-core>
 </metal:main>

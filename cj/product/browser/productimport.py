@@ -86,9 +86,8 @@ class PorductImport(BrowserView):
             try:
                 year, month, day = str(getattr(product.find("lastupdated"), "string", "")).split()[0].split("-")[0:3]
                 hour, minute = str(getattr(product.find("lastupdated"), "string", "")).split()[1].split(":")[0:2]
-
-
-                descriptionString = safe_unicode(str(getattr(product.find("description"), "string", "")))
+#                descriptionString = safe_unicode(str(getattr(product.find("description"), "string", "")))
+                descriptionString = safe_unicode(getattr(product.find("description"), "string", ""))
                 productClassification = self.classifier.classify(descriptionString)
                 subjectList = []
                 for subject in productClassification:
@@ -98,7 +97,6 @@ class PorductImport(BrowserView):
                     subjectList = ["Other"]
                 logger.info(productClassification)
                 # try more the
-
                 object = api.content.create(
                              container=portal['product'],
                              type='cj.product.cjproduct',
@@ -111,7 +109,8 @@ class PorductImport(BrowserView):
                              lastUpdated=datetime(int(year), int(month), int(day), int(hour), int(minute)),
                              productName=safe_unicode(str(getattr(product.find("name"), "string", ""))),
                              keywords=safe_unicode(str(getattr(product.find("keywords"), "string", ""))),
-                             description=safe_unicode(str(getattr(product.find("description"), "string", ""))),
+#                             description=safe_unicode(str(getattr(product.find("description"), "string", ""))),
+                             description=descriptionString.encode('utf-8'),
                              sku=safe_unicode(str(getattr(product.find("sku"), "string", ""))),
                              manufacturer=safe_unicode(str(getattr(product.find("manufacturer"), "string", ""))),
                              manufacturerId=safe_unicode(str(getattr(product.find("manufacturerid"), "string", ""))),

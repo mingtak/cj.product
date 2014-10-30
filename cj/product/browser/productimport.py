@@ -13,12 +13,15 @@ from naiveBayesClassifier import tokenizer
 from naiveBayesClassifier.trainer import Trainer
 from naiveBayesClassifier.classifier import Classifier
 from ..config import TRAINING_SET as trainingSet
+from plone.namedfile import NamedBlobImage
 #以下4個import，做關聯用
 from zope.app.intid.interfaces import IIntIds
 from z3c.relationfield import RelationValue
 from zope.event import notify
 from zope.lifecycleevent import ObjectModifiedEvent
 #以上4個import，做關聯用
+
+from ..tfidf import run as tfIdf
 
 logger = logging.getLogger("cj.product.productimport")
 
@@ -47,7 +50,7 @@ class PorductImport(BrowserView):
         record = dataFeedSetting.split("\r\n")[int(request["record"])]
         advertiser, urlString = record.split(self.splitString)
 
-        advertiserObject = catalog({"portal_type":"mingtak.advertiser.advertiser", "sortable_title":advertiser.lower()})[0].getObject()
+        advertiserObject = catalog({"portal_type":"mingtak.advertiser.advertiser", "id":advertiser.lower()})[0].getObject()
         gzFileName = urlString.split("/")[-1]
         dataFileName = gzFileName.split(".gz")[0]
         wgetString = "http://%s:%s@%s" % (connectId, connectPassword, urlString)
@@ -81,7 +84,7 @@ class PorductImport(BrowserView):
                 continue
             #Import 1000 record at one time， to avoid out of memory
             count += 1
-            if count > 100:
+            if count > 200:
                 return
             try:
                 year, month, day = str(getattr(product.find("lastupdated"), "string", "")).split()[0].split("-")[0:3]
@@ -89,14 +92,36 @@ class PorductImport(BrowserView):
 #                descriptionString = safe_unicode(str(getattr(product.find("description"), "string", "")))
                 descriptionString = safe_unicode(getattr(product.find("description"), "string", ""))
                 productClassification = self.classifier.classify(descriptionString)
-                subjectList = []
+                subjectList, bayesPair = [], []
                 for subject in productClassification:
-                    if subject[1] > 10000:
-                        subjectList.append(subject[0])
-                if subjectList == []:
+                    # bayes value
+                    if subject[1] > 0:
+                        if bayesPair == []:
+                            bayesPair = subject
+                        elif subject[1] > bayesPair[1]:
+                            bayesPair = subject
+                if bayesPair == []:
                     subjectList = ["Other"]
+                else:
+                    subjectList.append(bayesPair[0])
                 logger.info(productClassification)
+
+                #get product image
+                imageUrl = safe_unicode(str(getattr(product.find("imageurl"), "string", "")))
+                imageFileName = safe_unicode(imageUrl.split('/')[-1])
+                system("wget %s -O %s/%s" % (imageUrl, self.tmpDir, imageFileName))
+                with open('%s/%s' % (self.tmpDir, imageFileName)) as tmpImage:
+                    productImage = tmpImage.read()
+                # delete temp file
+                system("rm %s/%s" % (self.tmpDir, imageFileName))
+
                 # try more the
+                tf_idf_result = tfIdf(descriptionString.encode('utf-8'))
+
+                for result in tf_idf_result[0:7]:
+                    if len(result[0]) > 5:
+                        subjectList.append(result[0])
+
                 object = api.content.create(
                              container=portal['product'],
                              type='cj.product.cjproduct',
@@ -123,7 +148,7 @@ class PorductImport(BrowserView):
                              fromPrice=safe_unicode(str(getattr(product.find("fromprice"), "string", ""))),
                              buyUrl=safe_unicode(str(getattr(product.find("buyurl"), "string", ""))),
                              impressionUrl=safe_unicode(str(getattr(product.find("impressionurl"), "string", ""))),
-                             imageUrl=safe_unicode(str(getattr(product.find("imageurl"), "string", ""))),
+                             imageUrl=imageUrl,
                              advertiserCategory=safe_unicode(str(getattr(product.find("advertisercategory"), "string", ""))),
                              thirdPartyId=safe_unicode(str(getattr(product.find("thirdpartyid"), "string", ""))),
                              thirdPartyCategory=safe_unicode(str(getattr(product.find("thirdpartycategory"), "string", ""))),
@@ -142,13 +167,18 @@ class PorductImport(BrowserView):
                              condition=safe_unicode(str(getattr(product.find("condition"), "string", ""))),
                              warranty=safe_unicode(str(getattr(product.find("warranty"), "string", ""))),
                              standardShippingCost=float(str(getattr(product.find("standardshippingcost"), "string", "0.0"))),
+                             productImage = NamedBlobImage(data=productImage, filename=imageFileName),
                          )
                 api.content.transition(obj=object, transition='publish')
+                object.exclude_from_nav = True
+                object.reindexObject()
             except:
+                logger.error('error position 1')
                 continue
             #目前尚未處理startDate, endDate (對應catalog index的 start, end),原因：找不到sample
             #以及，advertiser的反向關連尚未確認正確性，如不正確，要使用notify處理(見getnewrelation...)！
             #還有，新增處理了，但更新沒處理到！
-            logger.info(":: %s: %s" %
-                (product.find("name").string,
+            logger.info("||| %s ||| %s ||| %s" %
+                (count,
+                 product.find("name").string,
                  product.find("buyurl").string,))

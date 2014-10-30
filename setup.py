@@ -32,6 +32,7 @@ setup(name='cj.product',
           # -*- Extra requirements: -*-
           'afiliate.product',
           'beautifulsoup4',
+          'nltk',
       ],
       entry_points="""
       # -*- Entry points: -*-

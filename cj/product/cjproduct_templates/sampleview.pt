@@ -7,147 +7,198 @@
       i18n:domain="cj.product">
 <body>
 
-<tal:comment tal:condition="nothing">
-    This is a sample view template. It will not be used for rendering the
-    content unless activated by creation of a view class with a matching name.
-</tal:comment>
-
 <metal:main fill-slot="content-core">
   <metal:content-core define-macro="content-core">
 
+<div id="cjproduct" tal:define="discount python:context.portal_catalog(id=context.id)[0].discount;
+                                advertiser python:context.advertiser[0].to_object;
+                                allowedPaymentList python:advertiser.allowedPayment;
+                                loginMethodList python:advertiser.loginMethod;
+                                securityMethodList python:advertiser.securityMethod;
+                                socialNetworkList python:advertiser.socialNetwork">
+
+            <div id="single-product" class="row">
+
+                 <div class="no-margin col-xs-12 col-sm-6 col-md-5 gallery-holder">
+    <div class="product-item-holder size-big single-product-gallery small-gallery">
+
+        <tal:checkdiscount condition="python:discount > 0">
+          <div class="ribbon red"><span>onsale</span></div>
+          <div class="ribbon green">
+            <span tal:content="python:'%s%% off' % int(discount*100)">40% off</span>
+          </div>
+          <div class="ribbon blue" tal:condition="python:discount > 0.4">
+            <span>deep discount</span>
+          </div>
+        </tal:checkdiscount>
+
+        <div id="owl-single-product">
+            <div class="single-product-gallery-item banner" id="slide1">
+                <div data-rel="prettyphoto" href="images/products/product-gallery-01.jpg" 
+                   tal:define="srcString context/@@images/productImage/preview;
+                               src python:srcString.split('src=&quot;')[1].split('&quot;')[0]">
+                    <img class="img-responsive" alt="" src="/++theme++theme.ladypriceasking/assets/images/blank.gif"
+                         tal:attributes="data-echo src" style="width:100%"/>
+                </div>
+            </div><!-- /.single-product-gallery-item -->
+        </div><!-- /.single-product-slider -->
+
+
+<div tal:replace="structure provider:IGoogleAdResponsive"
+     tal:condition="python:context.productImage.getImageSize()[1] < 250" />
 
 
 
-            	<div class="span8" id="cjproduct-item">
-                
-                	<div class="blog-post">
-                    
-                    	<div class="blog-post-title">
-                                	
-							<h2 tal:content="context/Title">Our First Blog Post</h2>
-							
-							<p>
-								<i class="ifc-date_to"></i> 
-<tal:lastupdated replace="python:context.lastUpdated.strftime('%b %d, %Y')" /> | 
-								<i class="ifc-ball_point_pen"></i> 
-								Advertiser:  
-<a tal:attributes="href python:context.advertiser[0].to_object.absolute_url()"
-   tal:content="python:context.advertiser[0].to_object.title" /> | 
-								<i class="ifc-quote"></i>
-In Stock: <tal:instock replace="context/inStock" />
-							</p>
-							
-						</div><!-- end .blog-post-title -->
-                        
-                        <div class="blog-post-thumb">
 
+    </div><!-- /.single-product-gallery -->
+</div><!-- /.gallery-holder -->
+                <div class="no-margin col-xs-12 col-sm-7 body-holder">
+    <div class="body">
+<!--        <div class="star-holder inline"><div class="star" data-score="4"></div></div> -->
+        <div class="availability"><label>in stock:</label><span class="available" tal:content="context/inStock">in stock</span></div>
 
+        <div class="title"><a tal:attributes="href context/buyUrl" target="_blank" tal:content="context/Title" /></div>
 
-                    <div class="portfolio-item-2">
-                    	
-                        <div class="row">
-                        	<div class="span3">
-                                <div class="portfolio-item-preview">
-                                	<img class="responsive-img"
-                                             tal:attributes="src context/imageUrl;
-                                                             alt context/Title">
-                                    <div class="portfolio-item-overlay">
-                                        <div class="portfolio-item-overlay-actions">
-                                            <a class="magnificPopup-gallery portfolio-item-zoom"
-                                               tal:attributes="href context/imageUrl">
-                                                <i class="ifc-zoom_in"></i>
-                                            </a>
-                                        </div><!-- end .portfolio-item-overlay-actions -->
-                                    </div><!-- end .portfolio-item-overlay -->
-                                </div><!-- end .portfolio-item-preview -->
-                            </div><!-- end .span3 -->
-
-
-<tal:advertiser define="advertiser python:context.advertiser[0].to_object">
-                  <div class="span5">
+        <div class="social-row">
 <div tal:replace="structure provider:IAddThis" />
-                    <div class="tabs-container">
-                    
-                        <ul class="tabs-menu fixed">
-                            <li>
-                                <a href="#product-tab">Product</a>
-                            </li>
-                            <li>
-                                <a href="#advertiser-tab">Advertiser</a>
-                            </li>
-                        </ul><!-- end .tabs-menu -->
-                        
-                        <div class="tabs">
-                            
-                            <div class="tab-content" id="product-tab">
 
-<ul class="arrow">
-<li>Brand: <span tal:replace="context/manufacturer" /></li>
-<li>SKU: <span tal:replace="context/sku" /></li>
-<li tal:condition="python:context.salePrice < context.price and context.salePrice > 0.0">
-  <del tal:content="string:Price: ${context/currency} ${context/price}"/></li>
-<li tal:condition="python:context.salePrice == context.price or context.salePrice == 0.0"
-    tal:content="string:Price: ${context/currency} ${context/price}"></li>
-<li tal:condition="python:context.salePrice < context.price and context.salePrice > 0.0">
-    <strong tal:content="string:Sale Price: ${context/currency} ${context/salePrice}" style="color:red" /></li>
-<li>Payment method:
-    <tal:repeat repeat="payment advertiser/allowedPayment">
-        <img tal:replace="structure payment/to_object/@@images/logoImage/listing" />
-    </tal:repeat>
-</li>
-<li>Registry method:
-    <tal:repeat repeat="payment advertiser/loginMethod">
-        <img tal:replace="structure payment/to_object/@@images/leadImage/listing" />
-    </tal:repeat>
-</li>
+        </div>
 
-</ul>
-<strong tal:content="context/promotionalText"
-        tal:condition="python:context.promotionalText != '' and context.promotionalText != context.Description"/>
-<p class="text-right hidden-tablet">
-  <a class="btn alt" tal:attributes="href context/buyUrl" target="_blank">Buy Now<i class="ifc-fast_forward"></i></a>
-</p>
-</div><!-- end .tab-content -->
+        <div class="buttons-holder">
+            <a class="btn-add-to-wishlist" href="#">add to wishlist</a>
+            <a class="btn-add-to-compare" href="#">add to compare list</a>
+        </div>
 
-                            
-<div class="tab-content" id="advertiser-tab">
-  <p tal:content="python:advertiser.Description()"/>
-  <ul class="check">
-    <li>Security:
-      <tal:repeat repeat="payment advertiser/securityMethod">
-        <img tal:replace="structure payment/to_object/@@images/leadImage/listing" />
-      </tal:repeat>   
-    </li>
-    <li>Social:
-      <tal:repeat repeat="payment advertiser/socialNetwork">
-        <img tal:replace="structure payment/to_object/@@images/logoImage/listing" />
-      </tal:repeat>
-    </li>
-  </ul>
-</div><!-- end .tab-content -->
-                            
-						</div><!-- end .tabs -->  
-                    
-                    </div><!-- end .tabs-container -->                    
-                  </div><!-- end .span5 -->
-</tal:advertiser>
+        <div class="excerpt" tal:condition="python:context.promotionalText != ''">
+            <strong tal:content="structure context/promotionalText" />
+        </div>
+
+        <div class="excerpt">
+            <p tal:content="structure context/Description" />
+        </div>
+
+
+                    <div class="meta-row">
+                        <div class="inline" tal:condition="python:context.sku != ''">
+                            <label>SKU:</label>
+                            <span tal:content="context/sku">54687621</span>
+                        </div><!-- /.inline -->
+                        <br>
+                        <div class="inline" tal:condition="python:context.keywords != ''">
+                            <label>keywords:</label>
+                            <span tal:content="context/keywords"><a href="#">-50% sale</a>,</span>
+                        </div><!-- /.inline -->
+                        <br>
+                        <div class="inline" tal:condition="python:context.advertiserCategory != ''">
+                            <label>category:</label>
+                            <span tal:content="context/advertiserCategory"><a href="#">-50% sale</a>,</span>
+                        </div><!-- /.inline -->
 
 
 
-                        </div><!-- end .row -->
-                    </div><!-- end .portfolio-item-2 -->
-                        </div><!-- end .blog-post-thumb -->
-<div class="firstletter" tal:content="structure context/Description" />
-<img tal:attributes="src context/impressionUrl" />
-                    </div><!-- end .blog-post -->
+                    </div>
+
+
+
+
+
+
+        <div class="prices">
+            <div class="price-current"
+              tal:content="python:'%s %s' % (context.currency, context.price if discount == 0.0 else context.salePrice)" />
+            <div class="price-prev"
+                 tal:condition="python:discount > 0">
+              <s tal:content="context/price" />
+            </div>
+        </div>
+        <div class="qnt-holder">
+            <a id="addto-cart" class="le-button huge" target="_blank" tal:attributes="href context/buyUrl">buy now</a>
+        </div><!-- /.qnt-holder -->
+    </div><!-- /.body -->
+
+</div><!-- /.body-holder -->
+            </div><!-- /.row #single-product -->
+
+
+
+<hr>
+            <!-- ========================================= SINGLE PRODUCT TAB ========================================= -->
+<section id="single-product-tab">
+    <div class="no-container">
+        <div class="tab-holder">
+            
+            <ul class="nav nav-tabs simple" >
+                <li class="active"><a href="#additional-info" data-toggle="tab">Additional Information</a></li>
+                <li><a href="#comments" data-toggle="tab">comments</a></li>
+            </ul><!-- /.nav-tabs -->
+
+            <div class="tab-content">
+                <div class="tab-pane active" id="additional-info">
+                    <ul class="tabled-data">
+                        <li>
+                          <label>advertiser</label>
+                          <div class="value">
+                            <a tal:attributes="href context/buyUrl" target="_blank">
+                              <strong tal:content="advertiser/Title" /> <img tal:replace="structure advertiser/@@images/logoImage/listing"/>
+                            </a>
+                          </div>
+                        </li>
+                        <li tal:condition="allowedPaymentList">
+                            <label>payment method</label>
+                            <div class="value">
+                              <span tal:repeat="allowedPayment allowedPaymentList">
+                                <img tal:replace="structure allowedPayment/to_object/@@images/logoImage/listing"/>
+                                <span tal:replace="string:&nbsp;&nbsp;" tal:condition="python:not repeat['allowedPayment'].end" />
+                              </span>
+                            </div>
+                        </li>
+                        <li tal:condition="loginMethodList">
+                            <label>login method</label>
+                            <div class="value">
+                              <span tal:repeat="loginMethod loginMethodList">
+                                <img tal:replace="structure loginMethod/to_object/@@images/leadImage/listing"/>
+                                <span tal:replace="string:&nbsp;&nbsp;" tal:condition="python:not repeat['loginMethod'].end" />
+                              </span>
+                            </div>
+                        </li>
+                        <li tal:condition="securityMethodList">
+                            <label>security method</label>
+                            <div class="value">
+                              <span tal:repeat="securityMethod securityMethodList">
+                                <img tal:replace="structure securityMethod/to_object/@@images/leadImage/listing"/>
+                                <span tal:replace="string:&nbsp;&nbsp;" tal:condition="python:not repeat['securityMethod'].end" />
+                              </span>
+                            </div>
+                        </li>
+                        <li tal:condition="socialNetworkList">
+                            <label>social network</label>
+                            <div class="value">
+                              <span tal:repeat="socialNetwork socialNetworkList">
+                                <img tal:replace="structure socialNetwork/to_object/@@images/logoImage/listing"/>
+                                <span tal:replace="string:&nbsp;&nbsp;" tal:condition="python:not repeat['socialNetwork'].end" />
+                              </span>
+                            </div>
+                        </li>
+                    </ul><!-- /.tabled-data -->
+                    <br>
+                    <div class="inline" tal:content="structure advertiser/Description" />
+                </div><!-- /.tab-pane #additional-info -->
+
+
+                <div class="tab-pane" id="comments">
+                  <div tal:replace="structure provider:IDisqus" />
+                </div><!-- /.tab-pane #reviews -->
+            </div><!-- /.tab-content -->
+
+        </div><!-- /.tab-holder -->
+    </div><!-- /.container -->
+</section><!-- /#single-product-tab -->
+<!-- ========================================= SINGLE PRODUCT TAB : END ========================================= -->            
 
 <div tal:replace="structure provider:IMaybeYouLike" />
-<div tal:replace="structure provider:IDisqus" />
-<div tal:replace="structure provider:IGoogleAdResponsive" />
-                </div><!-- end .span8 -->
 
 
-
+</div>
 
 
 

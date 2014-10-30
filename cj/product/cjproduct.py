@@ -16,6 +16,7 @@ from plone.namedfile.interfaces import IImageScaleTraversable
 from z3c.relationfield.schema import RelationList, RelationChoice
 from plone.formwidget.contenttree import ObjPathSourceBinder
 from afiliate.product.productdata import IProductData
+from plone.indexer import indexer
 from cj.product import MessageFactory as _
 
 
@@ -23,6 +24,25 @@ class ICjProduct(form.Schema, IImageScaleTraversable, IProductData):
     """
     Product content type for cj.com
     """
+    productImage = NamedBlobImage(
+        title=_(u"Product image"),
+        required=False,
+    )
+
+
+@indexer(ICjProduct)
+def imageSize_indexer(obj):
+    imageSize = obj.productImage.getSize()
+    return imageSize
+grok.global_adapter(imageSize_indexer, name='imageSize')
+
+@indexer(ICjProduct)
+def aspectRatio_indexer(obj):
+    aspect = obj.productImage.getImageSize()
+    aspectRatio = float(aspect[0])/float(aspect[1])
+    return aspectRatio
+grok.global_adapter(aspectRatio_indexer, name='aspectRatio')
+
 
 class CjProduct(Container):
     grok.implements(ICjProduct)

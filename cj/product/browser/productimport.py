@@ -13,6 +13,8 @@ from naiveBayesClassifier import tokenizer
 from naiveBayesClassifier.trainer import Trainer
 from naiveBayesClassifier.classifier import Classifier
 from ..config import TRAINING_SET as trainingSet
+from ..config import MAIL_FROM as mailFrom
+from ..config import MAIL_TO as mailTo
 from plone.namedfile import NamedBlobImage
 #以下4個import，做關聯用
 from zope.app.intid.interfaces import IIntIds
@@ -26,8 +28,85 @@ from ..tfidf import run as tfIdf
 logger = logging.getLogger("cj.product.productimport")
 
 
+def sendErrorReport(record):
+    api.portal.send_email(
+        recipient=mailTo,
+        sender=mailFrom,
+        subject="Cj product 匯入錯誤，請處理, %s" % str(record),
+        body="Cj product 匯入錯誤，請處理, %s" % str(record),
+    )
+    return
+
+
 def transString(string):
     return string.replace(u"\u201c",'"').replace(u"\u2019","'").replace(u"\xb0","").replace(u"\xa0","")
+
+
+def updateObject(item, product):
+    item.salePrice=float(str(getattr(product.find("saleprice"), "string", "0.0")))
+    item.price=float(str(getattr(product.find("price"), "string", "0.0")))
+    item.retailPrice=float(str(getattr(product.find("retailprice"), "string", "0.0")))
+    item.keywords=safe_unicode(str(transString(getattr(product.find("keywords"), "string", ""))))
+    item.description=safe_unicode(transString(getattr(product.find("description"), "string", "")))
+    item.buyUrl=safe_unicode(str(getattr(product.find("buyurl"), "string", "")))
+    item.promotionalText=safe_unicode(str(getattr(product.find("promotionaltext"), "string", "")))
+    item.reindexObject()
+    return
+
+
+def createObject(portal, title, subjectList, intIds,
+                 advertiserObject, lastUpdated, descriptionString, imageUrl,
+                 productImage, advertiser, product,):
+    object = api.content.create(
+        container=portal['product'],
+        type='cj.product.cjproduct',
+        title=safe_unicode(str(transString(title))),
+        subject=subjectList,
+        advertiser=[RelationValue(intIds.getId(advertiserObject))],
+        programName=safe_unicode(str(getattr(product.find("programname"), "string", advertiser))),
+        programUrl=safe_unicode(str(getattr(product.find("programurl"), "string", ""))),
+        catalogName=safe_unicode(str(getattr(product.find("catalogName"), "string", ""))),
+        lastUpdated=lastUpdated,
+        productName=safe_unicode(str(transString(getattr(product.find("name"), "string", "")))),
+        keywords=safe_unicode(str(transString(getattr(product.find("keywords"), "string", "")))),
+        description=descriptionString,
+        sku=safe_unicode(str(getattr(product.find("sku"), "string", ""))),
+        manufacturer=safe_unicode(str(getattr(product.find("manufacturer"), "string", ""))),
+        manufacturerId=safe_unicode(str(getattr(product.find("manufacturerid"), "string", ""))),
+        upc=safe_unicode(str(getattr(product.find("upc"), "string", ""))),
+        isbn=safe_unicode(str(getattr(product.find("isbn"), "string", ""))),
+        currency=safe_unicode(str(getattr(product.find("currency"), "string", "USD"))),
+        salePrice=float(str(getattr(product.find("saleprice"), "string", "0.0"))),
+        price=float(str(getattr(product.find("price"), "string", "0.0"))),
+        retailPrice=float(str(getattr(product.find("retailprice"), "string", "0.0"))),
+        fromPrice=safe_unicode(str(getattr(product.find("fromprice"), "string", ""))),
+        buyUrl=safe_unicode(str(getattr(product.find("buyurl"), "string", ""))),
+        impressionUrl=safe_unicode(str(getattr(product.find("impressionurl"), "string", ""))),
+        imageUrl=imageUrl,
+        advertiserCategory=safe_unicode(str(getattr(product.find("advertisercategory"), "string", ""))),
+        thirdPartyId=safe_unicode(str(getattr(product.find("thirdpartyid"), "string", ""))),
+        thirdPartyCategory=safe_unicode(str(getattr(product.find("thirdpartycategory"), "string", ""))),
+        publicationAuthor=safe_unicode(str(getattr(product.find("publicationauthor"), "string", ""))),
+        artist=safe_unicode(str(getattr(product.find("artist"), "string", ""))),
+        publicationTitle=safe_unicode(str(getattr(product.find("publicationtitle"), "string", ""))),
+        publisher=safe_unicode(str(getattr(product.find("publisher"), "string", ""))),
+        label=safe_unicode(str(getattr(product.find("label"), "string", ""))),
+        format=safe_unicode(str(getattr(product.find("format"), "string", ""))),
+        special=safe_unicode(str(getattr(product.find("special"), "string", ""))),
+        gift=safe_unicode(str(getattr(product.find("gift"), "string", ""))),
+        promotionalText=safe_unicode(str(getattr(product.find("promotionaltext"), "string", ""))),
+        offLine=safe_unicode(str(getattr(product.find("offline"), "string", ""))),
+        onLine=safe_unicode(str(getattr(product.find("online"), "string", ""))),
+        inStock=safe_unicode(str(getattr(product.find("instock"), "string", ""))),
+        condition=safe_unicode(str(getattr(product.find("condition"), "string", ""))),
+        warranty=safe_unicode(str(getattr(product.find("warranty"), "string", ""))),
+        standardShippingCost=float(str(getattr(product.find("standardshippingcost"), "string", "0.0"))),
+        productImage = productImage,
+        )
+    api.content.transition(obj=object, transition='publish')
+    object.exclude_from_nav = True
+    object.reindexObject()
+    return
 
 
 class PorductImport(BrowserView):
@@ -80,11 +159,13 @@ class PorductImport(BrowserView):
             sku = getattr(product.find("sku"), "string", None)
             if title is None or sku is None:
                 continue
-            recordCount = len(catalog({"portal_type":"cj.product.cjproduct",
-                                       "programName":safe_unicode(str(getattr(product.find("programname"), "string", advertiser))),
-                                       "title":title,
-                                       "sku":sku}))
-            if recordCount > 0:
+            brain = catalog({"portal_type":"cj.product.cjproduct",
+                             "programName":safe_unicode(str(getattr(product.find("programname"), "string", advertiser))),
+                             "title":title,
+                             "sku":sku})
+
+            if len(brain) > 0:
+                updateObject(item=brain[0].getObject(), product=product)
                 continue
             #Import 1000 record at one time， to avoid out of memory
 #            count += 1
@@ -94,7 +175,7 @@ class PorductImport(BrowserView):
                 year, month, day = str(getattr(product.find("lastupdated"), "string", "")).split()[0].split("-")[0:3]
                 hour, minute = str(getattr(product.find("lastupdated"), "string", "")).split()[1].split(":")[0:2]
 #                descriptionString = safe_unicode(str(getattr(product.find("description"), "string", "")))
-                descriptionString = safe_unicode(getattr(product.find("description"), "string", ""))
+                descriptionString = safe_unicode(transString(getattr(product.find("description"), "string", "")))
                 productClassification = self.classifier.classify(descriptionString)
                 subjectList, bayesPair = [], []
                 for subject in productClassification:
@@ -128,76 +209,26 @@ class PorductImport(BrowserView):
             except:
                 errorCount += 1
                 if errorCount > 50:
+                    sendErrorReport(record)
                     return
                 logger.error('錯誤 1')
                 continue
             try:
-                object = api.content.create(
-                             container=portal['product'],
-                             type='cj.product.cjproduct',
-                             title=safe_unicode(str(transString(title))),
-                             subject=subjectList,
-                             advertiser=[RelationValue(intIds.getId(advertiserObject))],
-                             programName=safe_unicode(str(getattr(product.find("programname"), "string", advertiser))),
-                             programUrl=safe_unicode(str(getattr(product.find("programurl"), "string", ""))),
-                             catalogName=safe_unicode(str(getattr(product.find("catalogName"), "string", ""))),
-                             lastUpdated=datetime(int(year), int(month), int(day), int(hour), int(minute)),
-                             productName=safe_unicode(str(transString(getattr(product.find("name"), "string", "")))),
-                             keywords=safe_unicode(str(transString(getattr(product.find("keywords"), "string", "")))),
-#                             description=safe_unicode(str(getattr(product.find("description"), "string", ""))),
-                             description=descriptionString.encode('utf-8'),
-                             sku=safe_unicode(str(getattr(product.find("sku"), "string", ""))),
-                             manufacturer=safe_unicode(str(getattr(product.find("manufacturer"), "string", ""))),
-                             manufacturerId=safe_unicode(str(getattr(product.find("manufacturerid"), "string", ""))),
-                             upc=safe_unicode(str(getattr(product.find("upc"), "string", ""))),
-                             isbn=safe_unicode(str(getattr(product.find("isbn"), "string", ""))),
-                             currency=safe_unicode(str(getattr(product.find("currency"), "string", "USD"))),
-                             salePrice=float(str(getattr(product.find("saleprice"), "string", "0.0"))),
-                             price=float(str(getattr(product.find("price"), "string", "0.0"))),
-                             retailPrice=float(str(getattr(product.find("retailprice"), "string", "0.0"))),
-                             fromPrice=safe_unicode(str(getattr(product.find("fromprice"), "string", ""))),
-                             buyUrl=safe_unicode(str(getattr(product.find("buyurl"), "string", ""))),
-                             impressionUrl=safe_unicode(str(getattr(product.find("impressionurl"), "string", ""))),
-                             imageUrl=imageUrl,
-                             advertiserCategory=safe_unicode(str(getattr(product.find("advertisercategory"), "string", ""))),
-                             thirdPartyId=safe_unicode(str(getattr(product.find("thirdpartyid"), "string", ""))),
-                             thirdPartyCategory=safe_unicode(str(getattr(product.find("thirdpartycategory"), "string", ""))),
-                             publicationAuthor=safe_unicode(str(getattr(product.find("publicationauthor"), "string", ""))),
-                             artist=safe_unicode(str(getattr(product.find("artist"), "string", ""))),
-                             publicationTitle=safe_unicode(str(getattr(product.find("publicationtitle"), "string", ""))),
-                             publisher=safe_unicode(str(getattr(product.find("publisher"), "string", ""))),
-                             label=safe_unicode(str(getattr(product.find("label"), "string", ""))),
-                             format=safe_unicode(str(getattr(product.find("format"), "string", ""))),
-                             special=safe_unicode(str(getattr(product.find("special"), "string", ""))),
-                             gift=safe_unicode(str(getattr(product.find("gift"), "string", ""))),
-                             promotionalText=safe_unicode(str(getattr(product.find("promotionaltext"), "string", ""))),
-                             offLine=safe_unicode(str(getattr(product.find("offline"), "string", ""))),
-                             onLine=safe_unicode(str(getattr(product.find("online"), "string", ""))),
-                             inStock=safe_unicode(str(getattr(product.find("instock"), "string", ""))),
-                             condition=safe_unicode(str(getattr(product.find("condition"), "string", ""))),
-                             warranty=safe_unicode(str(getattr(product.find("warranty"), "string", ""))),
-                             standardShippingCost=float(str(getattr(product.find("standardshippingcost"), "string", "0.0"))),
-                             productImage = NamedBlobImage(data=productImage, filename=imageFileName),
-                         )
-            except:
+                lastUpdated = datetime(int(year), int(month), int(day), int(hour), int(minute))
+                object = createObject(portal=portal, title=title, subjectList=subjectList, intIds=intIds,
+                                      advertiserObject=advertiserObject, lastUpdated=lastUpdated,
+                                      descriptionString=descriptionString, imageUrl=imageUrl,
+                                      productImage=NamedBlobImage(data=productImage, filename=imageFileName),
+                                      advertiser=advertiser, product=product,)
+            except TypeError:
                 errorCount += 1
                 if errorCount > 50:
-                    return
-                logger.error('錯誤 2')
-                continue
-            try:
-                api.content.transition(obj=object, transition='publish')
-                object.exclude_from_nav = True
-                object.reindexObject()
-            except:
-                errorCount += 1
-                if errorCount > 50:
+                    sendErrorReport(record)
                     return
                 logger.error('error position 1')
                 continue
             #目前尚未處理startDate, endDate (對應catalog index的 start, end),原因：找不到sample
             #以及，advertiser的反向關連尚未確認正確性，如不正確，要使用notify處理(見getnewrelation...)！
-            #還有，新增處理了，但更新沒處理到！
             logger.info("||| %s ||| %s ||| %s" %
                 (count,
                  product.find("name").string,
@@ -205,4 +236,3 @@ class PorductImport(BrowserView):
             count += 1
             if count > 200:
                 return
-

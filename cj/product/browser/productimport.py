@@ -26,6 +26,10 @@ from ..tfidf import run as tfIdf
 logger = logging.getLogger("cj.product.productimport")
 
 
+def transString(string):
+    return string.replace(u"\u201c",'"').replace(u"\u2019","'").replace(u"\xb0","").replace(u"\xa0","")
+
+
 class PorductImport(BrowserView):
     prefixString = "cj.product.cjconfiglet.ICjConfiglet"
     splitString = ":::"
@@ -70,7 +74,7 @@ class PorductImport(BrowserView):
         soup = BeautifulSoup(doc, "xml")
 
         # in this loop, every product have same advertiser
-        count = 0
+        count, errorCount = 0, 0
         for product in soup.find_all("product"):
             title = getattr(product.find("name"), "string", None)
             sku = getattr(product.find("sku"), "string", None)
@@ -83,9 +87,9 @@ class PorductImport(BrowserView):
             if recordCount > 0:
                 continue
             #Import 1000 record at one time， to avoid out of memory
-            count += 1
-            if count > 200:
-                return
+#            count += 1
+#            if count > 200:
+#                return
             try:
                 year, month, day = str(getattr(product.find("lastupdated"), "string", "")).split()[0].split("-")[0:3]
                 hour, minute = str(getattr(product.find("lastupdated"), "string", "")).split()[1].split(":")[0:2]
@@ -116,24 +120,30 @@ class PorductImport(BrowserView):
                 system("rm %s/%s" % (self.tmpDir, imageFileName))
 
                 # try more the
-                tf_idf_result = tfIdf(descriptionString.encode('utf-8'))
+                tf_idf_result = tfIdf(descriptionString)
 
                 for result in tf_idf_result[0:7]:
                     if len(result[0]) > 5:
                         subjectList.append(result[0])
-
+            except:
+                errorCount += 1
+                if errorCount > 50:
+                    return
+                logger.error('錯誤 1')
+                continue
+            try:
                 object = api.content.create(
                              container=portal['product'],
                              type='cj.product.cjproduct',
-                             title=safe_unicode(str(title)),
+                             title=safe_unicode(str(transString(title))),
                              subject=subjectList,
                              advertiser=[RelationValue(intIds.getId(advertiserObject))],
                              programName=safe_unicode(str(getattr(product.find("programname"), "string", advertiser))),
                              programUrl=safe_unicode(str(getattr(product.find("programurl"), "string", ""))),
                              catalogName=safe_unicode(str(getattr(product.find("catalogName"), "string", ""))),
                              lastUpdated=datetime(int(year), int(month), int(day), int(hour), int(minute)),
-                             productName=safe_unicode(str(getattr(product.find("name"), "string", ""))),
-                             keywords=safe_unicode(str(getattr(product.find("keywords"), "string", ""))),
+                             productName=safe_unicode(str(transString(getattr(product.find("name"), "string", "")))),
+                             keywords=safe_unicode(str(transString(getattr(product.find("keywords"), "string", "")))),
 #                             description=safe_unicode(str(getattr(product.find("description"), "string", ""))),
                              description=descriptionString.encode('utf-8'),
                              sku=safe_unicode(str(getattr(product.find("sku"), "string", ""))),
@@ -169,10 +179,20 @@ class PorductImport(BrowserView):
                              standardShippingCost=float(str(getattr(product.find("standardshippingcost"), "string", "0.0"))),
                              productImage = NamedBlobImage(data=productImage, filename=imageFileName),
                          )
+            except:
+                errorCount += 1
+                if errorCount > 50:
+                    return
+                logger.error('錯誤 2')
+                continue
+            try:
                 api.content.transition(obj=object, transition='publish')
                 object.exclude_from_nav = True
                 object.reindexObject()
             except:
+                errorCount += 1
+                if errorCount > 50:
+                    return
                 logger.error('error position 1')
                 continue
             #目前尚未處理startDate, endDate (對應catalog index的 start, end),原因：找不到sample
@@ -182,3 +202,7 @@ class PorductImport(BrowserView):
                 (count,
                  product.find("name").string,
                  product.find("buyurl").string,))
+            count += 1
+            if count > 200:
+                return
+

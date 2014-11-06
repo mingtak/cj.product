@@ -176,8 +176,16 @@ class PorductImport(BrowserView):
                 hour, minute = str(getattr(product.find("lastupdated"), "string", "")).split()[1].split(":")[0:2]
 #                descriptionString = safe_unicode(str(getattr(product.find("description"), "string", "")))
                 descriptionString = safe_unicode(transString(getattr(product.find("description"), "string", "")))
-                productClassification = self.classifier.classify(descriptionString)
+                keywordString = safe_unicode(transString(getattr(product.find("keywords"), "string", "")))
+                advertiserCategory = safe_unicode(transString(getattr(product.find("advertisercategory"), "string", "")))
+                productClassification = self.classifier.classify('%s %s %s %s %s %s' %
+                                       (advertiserCategory, keywordString, descriptionString,
+                                        advertiserCategory, keywordString, advertiserCategory))
                 subjectList, bayesPair = [], []
+                subjectList.append(productClassification[0][0])
+
+
+                """
                 for subject in productClassification:
                     # bayes value
                     if subject[1] > 0:
@@ -189,6 +197,9 @@ class PorductImport(BrowserView):
                     subjectList = ["Other"]
                 else:
                     subjectList.append(bayesPair[0])
+                """
+
+
                 logger.info(productClassification)
 
                 #get product image
@@ -200,8 +211,10 @@ class PorductImport(BrowserView):
                 # delete temp file
                 system("rm %s/%s" % (self.tmpDir, imageFileName))
 
-                # try more the
-                tf_idf_result = tfIdf(descriptionString)
+                # tf idf
+                tf_idf_result = tfIdf('%s %s %s %s %s %s' %
+                                       (advertiserCategory, keywordString, descriptionString, 
+                                        advertiserCategory, keywordString, advertiserCategory))
 
                 for result in tf_idf_result[0:7]:
                     if len(result[0]) > 5:
@@ -220,9 +233,9 @@ class PorductImport(BrowserView):
                                       descriptionString=descriptionString, imageUrl=imageUrl,
                                       productImage=NamedBlobImage(data=productImage, filename=imageFileName),
                                       advertiser=advertiser, product=product,)
-            except TypeError:
+            except:
                 errorCount += 1
-                if errorCount > 50:
+                if errorCount > 100:
                     sendErrorReport(record)
                     return
                 logger.error('error position 1')
@@ -234,5 +247,5 @@ class PorductImport(BrowserView):
                  product.find("name").string,
                  product.find("buyurl").string,))
             count += 1
-            if count > 200:
+            if count > 100:
                 return

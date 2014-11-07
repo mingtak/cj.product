@@ -103,7 +103,7 @@ def createObject(portal, title, subjectList, intIds,
         standardShippingCost=float(str(getattr(product.find("standardshippingcost"), "string", "0.0"))),
         productImage = productImage,
         )
-    api.content.transition(obj=object, transition='publish')
+#    api.content.transition(obj=object, transition='publish')
     object.exclude_from_nav = True
     object.reindexObject()
     return

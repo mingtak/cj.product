@@ -32,11 +32,11 @@
           </div>
         </tal:checkdiscount>
 
-        <div id="owl-single-product">
+        <div id="owl-single-product" tal:condition="python:getattr(context.productImage, 'size', False)">
             <div class="single-product-gallery-item banner" id="slide1">
                 <div data-rel="prettyphoto" href="images/products/product-gallery-01.jpg" 
-                   tal:define="srcString context/@@images/productImage/preview;
-                               src python:srcString.split('src=&quot;')[1].split('&quot;')[0]">
+                     tal:define="srcString context/@@images/productImage/preview;
+                                 src python:srcString.split('src=&quot;')[1].split('&quot;')[0]">
                     <img class="img-responsive" alt="" src="/++theme++theme.ladypriceasking/assets/images/blank.gif"
                          tal:attributes="data-echo src" style="width:100%"/>
                 </div>
@@ -197,6 +197,8 @@
 
 <div tal:replace="structure provider:IMaybeYouLike" />
 
+<!-- impression url -->
+<img tal:attributes="href context/impressionUrl" />
 
 </div>
 

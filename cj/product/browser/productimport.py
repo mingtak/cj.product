@@ -15,6 +15,7 @@ from naiveBayesClassifier.classifier import Classifier
 from ..config import TRAINING_SET as trainingSet
 from ..config import MAIL_FROM as mailFrom
 from ..config import MAIL_TO as mailTo
+from ..config import SYN_SETS as synSets
 from plone.namedfile import NamedBlobImage
 #以下4個import，做關聯用
 from zope.app.intid.interfaces import IIntIds
@@ -103,7 +104,16 @@ def createObject(portal, title, subjectList, intIds,
         standardShippingCost=float(str(getattr(product.find("standardshippingcost"), "string", "0.0"))),
         productImage = productImage,
         )
-#    api.content.transition(obj=object, transition='publish')
+    for synWord in synSets[object.Subject()[0]]:
+        if synWord in object.advertiserCategory.lower() or synWord in object.Title().lower():
+            api.content.transition(obj=object, transition='publish')
+            break
+    if api.content.get_state(obj=object) == "private" and len(object.Subject()) > 1:
+        if hasattr(synSets, object.Subject()[1].lower()):
+            tempList = list(object.Subject())
+            tempList.reverse(); tempList.pop(); tempList.reverse()
+            object.setSubject(tuple(tempList))
+            api.content.transition(obj=object, transition='publish')
     object.exclude_from_nav = True
     object.reindexObject()
     return
@@ -182,7 +192,10 @@ class PorductImport(BrowserView):
                                        (advertiserCategory, keywordString, descriptionString,
                                         advertiserCategory, keywordString, advertiserCategory))
                 subjectList, bayesPair = [], []
-                subjectList.append(productClassification[0][0])
+                if productClassification[0][1] > 0:
+                    subjectList.append(productClassification[0][0])
+                else:
+                    subjectList.append("other")
 
 
                 """
@@ -194,7 +207,7 @@ class PorductImport(BrowserView):
                         elif subject[1] > bayesPair[1]:
                             bayesPair = subject
                 if bayesPair == []:
-                    subjectList = ["Other"]
+                    subjectList = ["other"]
                 else:
                     subjectList.append(bayesPair[0])
                 """

@@ -12,4 +12,4 @@ class CjControlPanelForm(RegistryEditForm):
     schema = ICjConfiglet
 
 CjControlPanelView = layout.wrap_form(CjControlPanelForm, ControlPanelFormWrapper)
-CjControlPanelView.label = u"Cj produce data feed setting"
+CjControlPanelView.label = u"Cj product datafeed setting"
